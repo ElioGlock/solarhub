@@ -43,7 +43,7 @@ jobs:
           cd dist
           mv Solarhub-*-x86_64.AppImage Solarhub-x86_64.AppImage
           sha256sum Solarhub-x86_64.AppImage > Solarhub-x86_64.AppImage.sha256
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: notes
       - uses: softprops/action-gh-release@v2
@@ -71,7 +71,7 @@ jobs:
           Compress-Archive -Path dist/Solarhub -DestinationPath dist/Solarhub-windows-x64.zip
           $h = (Get-FileHash dist/Solarhub-windows-x64.zip -Algorithm SHA256).Hash.ToLower()
           Set-Content -Path dist/Solarhub-windows-x64.zip.sha256 -Value "$h  Solarhub-windows-x64.zip" -NoNewline
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: notes
       - uses: softprops/action-gh-release@v2
