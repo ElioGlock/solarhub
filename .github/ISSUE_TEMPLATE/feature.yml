@@ -1,0 +1,19 @@
+name: Sugestão
+description: Ideia de recurso ou melhoria
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Qual problema isso resolve?
+      description: Conte o cenário (time, repositórios, ferramenta de IA).
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Como você imagina
+  - type: textarea
+    id: alt
+    attributes:
+      label: Alternativas que você já tentou

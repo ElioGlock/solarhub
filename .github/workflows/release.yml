@@ -1,0 +1,82 @@
+name: Release
+
+# Disparado por `python scripts/release.py X.Y.Z --push` (ou `git push origin vX.Y.Z`).
+# Gera o AppImage (Linux) e o .zip (Windows) com nomes fixos, publica o SHA-256 de cada um e usa a seção
+# da versão no CHANGELOG.md como texto da Release. O app de quem já instalou avisa e atualiza sozinho.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tag confere com a versão do pyproject.toml
+        run: |
+          v=$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml | head -1)
+          test "v$v" = "${GITHUB_REF_NAME}" || { echo "tag ${GITHUB_REF_NAME} ≠ versão $v"; exit 1; }
+      - name: Notas da versão
+        run: python scripts/release.py --notes "${GITHUB_REF_NAME#v}" > notes.md
+      - run: pip install -e ".[dev]" && pytest -q
+      - uses: actions/upload-artifact@v4
+        with:
+          name: notes
+          path: notes.md
+
+  linux-appimage:
+    needs: verify
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Gerar AppImage
+        run: packaging/appimage/build.sh
+      - name: Nome fixo e checksum
+        run: |
+          cd dist
+          mv Solarhub-*-x86_64.AppImage Solarhub-x86_64.AppImage
+          sha256sum Solarhub-x86_64.AppImage > Solarhub-x86_64.AppImage.sha256
+      - uses: actions/download-artifact@v4
+        with:
+          name: notes
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: notes.md
+          files: |
+            dist/Solarhub-x86_64.AppImage
+            dist/Solarhub-x86_64.AppImage.sha256
+
+  windows-zip:
+    needs: verify
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ".[app]" pyinstaller
+      - run: pyinstaller packaging/windows/solarhub.spec --noconfirm --distpath dist
+      - name: Teste rápido do executável
+        run: dist/Solarhub/solarhub-cli.exe --version
+      - name: Compactar e checksum
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist/Solarhub -DestinationPath dist/Solarhub-windows-x64.zip
+          $h = (Get-FileHash dist/Solarhub-windows-x64.zip -Algorithm SHA256).Hash.ToLower()
+          Set-Content -Path dist/Solarhub-windows-x64.zip.sha256 -Value "$h  Solarhub-windows-x64.zip" -NoNewline
+      - uses: actions/download-artifact@v4
+        with:
+          name: notes
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: notes.md
+          files: |
+            dist/Solarhub-windows-x64.zip
+            dist/Solarhub-windows-x64.zip.sha256
