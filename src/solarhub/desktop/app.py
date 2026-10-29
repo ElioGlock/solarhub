@@ -634,7 +634,7 @@ class ExplorePage(Page):
         self.banner.hide()
         self.body.addWidget(self.banner)
         self.q = QLineEdit()
-        self.q.setPlaceholderText("Buscar: paginação, autenticação, god object…   (Ctrl+F)")
+        self.q.setPlaceholderText("Buscar: autenticação, logs, testes…   (Ctrl+F)")
         self.q.setClearButtonEnabled(True)
         self._debounce = QTimer(self, singleShot=True, interval=220)
         self._debounce.timeout.connect(self.search)
