@@ -1085,6 +1085,54 @@ class IntegrationsPage(Page):
                           button("Ver log de sync", lambda: self._open(paths.log_file())), None))
         self.content.addWidget(box)
 
+        # desinstalar
+        box, lay = card()
+        lay.addWidget(label("Desinstalar o Solarhub", h2=True))
+        lay.addWidget(label("Desfaz tudo o que o Solarhub fez neste computador: skills publicadas, registro do MCP nas "
+                            "ferramentas, atualização automática, atalho, comando no terminal, a pasta do hub com os "
+                            "repositórios clonados e o próprio programa. O Python não é removido.",
+                            muted=True, wrap=True))
+        rm_b = button("Desinstalar…", self.uninstall)
+        rm_b.setProperty("danger", True)
+        self.win.register_action(rm_b)
+        lay.addLayout(row(rm_b, None))
+        self.content.addWidget(box)
+
+    def uninstall(self):
+        from solarhub import setup as setup_mod  # noqa: PLC0415
+        from solarhub import uninstaller  # noqa: PLC0415
+
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Warning)
+        box.setWindowTitle("Desinstalar o Solarhub")
+        plan = setup_mod.uninstall_plan(False, True)
+        box.setText("Vai remover:\n\n" + "\n".join(f"•  {p}" for p in plan) +
+                    "\n\nSeus repositórios no GitHub, pastas locais vinculadas como fonte e o Python não são tocados. "
+                    "Não dá para desfazer.")
+        keep = QCheckBox(f"Manter minha configuração e os repositórios clonados ({tilde(paths.home())})")
+        box.setCheckBox(keep)
+        go = box.addButton("Desinstalar tudo", QMessageBox.DestructiveRole)
+        box.addButton("Cancelar", QMessageBox.RejectRole)
+        box.exec()
+        if box.clickedButton() is not go:
+            return
+        keep_data = keep.isChecked()
+        removal = uninstaller.program_removal()
+        win = self.win
+        for t in (win._auto, win._clock):  # nada pode recriar ~/solarhub enquanto apaga
+            t.stop()
+
+        def done(msgs):
+            if removal:
+                uninstaller.launch_removal(removal)
+            QMessageBox.information(win, "Solarhub desinstalado",
+                                    "Pronto: o Solarhub foi removido deste computador"
+                                    + (", menos a pasta do hub, que você pediu para manter" if keep_data else "")
+                                    + ".\n\nO app vai fechar agora. O Python continua instalado.")
+            win.quit_app()
+
+        win.run(lambda: setup_mod.uninstall(keep_data), on_done=done, busy="Desinstalando…")
+
     def _open(self, p: Path):
         if not p.exists():
             self.win.show_message(f"{tilde(p)} ainda não existe.", "warn")

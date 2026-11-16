@@ -225,39 +225,6 @@ def init_project(project: Path, copilot: bool = True) -> list[str]:
     return written
 
 
-def _stop_running_app() -> bool:
-    """Fecha o app do Solarhub se estiver aberto (senão ele recriaria arquivos durante a desinstalação)."""
-    stopped = False
-    me = os.getpid()
-    if osutil.IS_WINDOWS:
-        ps = ("Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne %d -and $_.CommandLine -and "
-              "($_.CommandLine -match 'solarhub\\s+app' -or $_.CommandLine -match 'Solarhub\\.exe') } | "
-              "ForEach-Object { Stop-Process -Id $_.ProcessId -Force; 'x' }" % me)
-        p = osutil.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps], capture_output=True, text=True,
-                       timeout=60)
-        return "x" in (p.stdout or "")
-    proc = Path("/proc")
-    if not proc.is_dir():
-        return False
-    import signal  # noqa: PLC0415
-
-    for d in proc.iterdir():
-        if not d.name.isdigit() or int(d.name) == me:
-            continue
-        try:
-            args = (d / "cmdline").read_bytes().split(b"\0")
-        except OSError:
-            continue
-        text = [a.decode("utf-8", "replace") for a in args if a]
-        if any(a.endswith("solarhub") or a == "solarhub" or a.endswith(".AppImage") for a in text) and "app" in text:
-            try:
-                os.kill(int(d.name), signal.SIGTERM)
-                stopped = True
-            except OSError:
-                pass
-    return stopped
-
-
 def _remove_if_empty(*dirs: Path) -> list[str]:
     """Remove pastas que ficaram vazias (ex.: ~/.claude/skills criada pelo Solarhub). Nunca apaga conteúdo."""
     removed = []
@@ -271,38 +238,36 @@ def _remove_if_empty(*dirs: Path) -> list[str]:
     return removed
 
 
-def uninstall_plan(keep_data: bool = False) -> list[str]:
+def uninstall_plan(keep_data: bool = False, remove_program: bool = True) -> list[str]:
     """O que será removido (para confirmar antes)."""
+    from solarhub import uninstaller  # noqa: PLC0415
+
     m = state.load()
-    plan = [f"{len(m['links'])} link(s) de skills nas pastas das ferramentas",
+    plan = [f"{len(m['links'])} skill(s) publicadas nas pastas das ferramentas de IA",
             f"registro do MCP em {len(m['mcp'])} ferramenta(s)",
             f"atualização automática ({scheduler.NAME})",
-            "atalho no menu, comando `solarhub` e blocos no perfil do shell"]
+            "atalho no menu, comando `solarhub` e o que foi adicionado ao PATH/perfil do shell"]
     if not keep_data:
-        plan.append(f"a pasta {paths.home()} inteira (configuração, clones, índice, histórico)")
+        plan.append(f"a pasta {paths.home()} inteira: configuração, repositórios clonados, índice e histórico")
+    r = uninstaller.program_removal() if remove_program else None
+    if r:
+        plan.append(r.description)
     return plan
 
 
 def uninstall(keep_data: bool = False) -> list[str]:
     """Remove tudo o que o Solarhub criou no computador. Com keep_data, mantém a pasta do hub."""
-    done = []
-    if _stop_running_app():
-        done.append("app do Solarhub fechado")
-        import time  # noqa: PLC0415
+    import time  # noqa: PLC0415
 
-        time.sleep(1)
+    from solarhub import uninstaller  # noqa: PLC0415
+
+    done = []
     # 1. atualização automática primeiro, para nada rodar no meio da remoção
     try:
         done.append(scheduler.disable())
     except Exception as e:  # noqa: BLE001
         done.append(f"agendador: {e}")
-    # 2. skills publicadas e pastas de skills que ficaram vazias
-    n = linker.unlink_all()
-    done.append(f"{n} link(s) de skills removido(s)")
-    for t in linker.TARGET_DIRS:
-        d = linker.target_dir(t)
-        done += [f"pasta vazia removida: {p}" for p in _remove_if_empty(d, d.parent)]
-    # 3. MCP em cada ferramenta (+ backups que o Solarhub fez desses arquivos)
+    # 2. MCP em cada ferramenta (+ backups que o Solarhub fez desses arquivos)
     for entry in list(state.load()["mcp"]):
         try:
             done.append(clients.uninstall(clients.get(entry["client"])))
@@ -314,6 +279,17 @@ def uninstall(keep_data: bool = False) -> list[str]:
             for bak in f.parent.glob(f"{f.name}.solarhub-bak-*"):
                 bak.unlink(missing_ok=True)
                 done.append(f"backup removido: {bak}")
+    # com o MCP já fora das ferramentas, fecha app, servidores MCP e sync que ainda estejam rodando
+    n = uninstaller.stop_other_processes()
+    if n:
+        done.append(f"{n} processo(s) do Solarhub fechado(s)")
+        time.sleep(1)
+    # 3. skills publicadas e pastas de skills que ficaram vazias
+    n = linker.unlink_all()
+    done.append(f"{n} link(s) de skills removido(s)")
+    for t in linker.TARGET_DIRS:
+        d = linker.target_dir(t)
+        done += [f"pasta vazia removida: {p}" for p in _remove_if_empty(d, d.parent)]
     # 4. atalho, ícone, comando no terminal, PATH (Windows), blocos no perfil do shell
     for entry in list(state.load()["files"]):
         f = Path(entry["path"])
@@ -345,8 +321,15 @@ def uninstall(keep_data: bool = False) -> list[str]:
     if keep_data:
         done.append(f"mantido: {paths.home()} (use sem --keep-data para apagar)")
     elif paths.home().exists():
-        osutil.rmtree(paths.home())
-        done.append(f"{paths.home()} apagado")
+        for attempt in range(10):  # no Windows, um arquivo recém-liberado pode demorar a soltar
+            try:
+                osutil.rmtree(paths.home())
+                break
+            except OSError:
+                if attempt == 9:
+                    raise
+                time.sleep(0.5)
+        done.append(f"{paths.home()} apagado (configuração e repositórios clonados)")
     if projects:
         done.append("seus projetos não foram alterados; se quiser, tire o bloco do Solarhub do AGENTS.md e o "
                     ".solarhub.toml em: " + ", ".join(projects))

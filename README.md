@@ -86,7 +86,7 @@ No Ubuntu/Debian, se a janela não abrir: `sudo apt install libegl1 libgl1 libxk
 |---|---|
 | Atualizar | `uv tool upgrade solarhub` (o app avisa quando sai versão nova) |
 | Fixar numa versão | acrescente a versão no fim da URL: `…/ElioGlock/solarhub@v0.4.0` |
-| Remover | `solarhub uninstall` e depois `uv tool uninstall solarhub` |
+| Remover | **Integrações → Desinstalar** no app, ou `solarhub uninstall` (remove também o programa) |
 | Sem uv | `pipx install "solarhub[app] @ git+https://github.com/ElioGlock/solarhub"` funciona igual |
 
 <details>
@@ -129,12 +129,15 @@ quê. Tudo fica registrado em `~/solarhub/.state/manifest.json` e sai com a desi
 | Sincronização automática | timer do systemd do usuário (Linux) ou tarefa oculta no Agendador (Windows) |
 | Menu e terminal | atalho "Solarhub" e comando `solarhub` (bloco marcado no `~/.profile` ou PATH do usuário no Windows) |
 
+Para remover, use **Integrações → Desinstalar o Solarhub** no app, ou no terminal:
+
 ```bash
-solarhub uninstall        # remove tudo o que o Solarhub criou, inclusive ~/solarhub (--keep-data mantém o hub)
+solarhub uninstall
 ```
 
-Depois, `uv tool uninstall solarhub` (ou apague o AppImage / a pasta do `.zip`). Num clone, `./uninstall.sh` (ou
-`.\uninstall.cmd`) faz tudo e também apaga o `.venv`. O Solarhub nunca mexe em skills ou configurações que não criou. Mais em
+Isso desfaz tudo: skills publicadas, MCP, sincronização automática, atalho, comando, a pasta `~/solarhub` com os
+repositórios clonados e o próprio programa (uv tool, pipx, AppImage, pasta do `.zip` ou o `.venv` de um clone). O
+Python não é removido. `--keep-data` mantém a pasta do hub. O Solarhub nunca mexe em skills ou configurações que não criou. Mais em
 [SECURITY.md](SECURITY.md).
 
 ## Participe

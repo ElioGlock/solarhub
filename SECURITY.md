@@ -25,8 +25,8 @@ O Solarhub é uma ferramenta local e de código aberto. Para avaliar o risco, va
   embeddings. Não há telemetria, conta nem servidor do Solarhub.
 - **Atualizações:** só são baixadas das Releases deste repositório e instaladas depois de conferir o SHA-256
   publicado junto. Se não conferir, nada é alterado.
-- **Arquivos:** tudo o que ele cria fica listado em `~/solarhub/.state/manifest.json` e sai com `./uninstall.sh`
-  (ou `uninstall.cmd`). Antes de editar um arquivo de configuração de outra ferramenta (ex.: `mcp.json` do VS Code),
+- **Arquivos:** tudo o que ele cria fica listado em `~/solarhub/.state/manifest.json` e sai com `solarhub uninstall`
+  (ou Integrações → Desinstalar, no app), que também remove o programa. Antes de editar um arquivo de configuração de outra ferramenta (ex.: `mcp.json` do VS Code),
   ele guarda uma cópia (`*.solarhub-bak-*`).
 - **Agentes de IA:** o servidor MCP só lê o índice local. A única ferramenta que escreve (`solar_propose_adr`, que
   abre um PR) vem desligada e só funciona se você ligar.
