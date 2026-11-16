@@ -83,8 +83,17 @@ def _materialize(lp: Path, dest: Path, mode: str) -> None:
         osutil.make_dir_link(lp, dest)
 
 
-def relink(cfg: Config, store: Store) -> LinkReport:
+def effective_mode(cfg: Config) -> str:
+    """symlink quando o sistema deixa; no Windows sem permissão de symlink, cópia.
+    (Junctions funcionam no Explorer, mas o Copilot e o VS Code não enxergam skills dentro delas.)"""
     mode = cfg.settings.link_mode if cfg.settings.link_mode in ("symlink", "copy") else "symlink"
+    if mode == "symlink" and not osutil.can_symlink():
+        return "copy"
+    return mode
+
+
+def relink(cfg: Config, store: Store) -> LinkReport:
+    mode = effective_mode(cfg)
     desired = desired_skills(cfg, store)
     want: dict[str, tuple[str, Path]] = {}
     for t in cfg.settings.link_targets:

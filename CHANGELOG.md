@@ -5,6 +5,18 @@ e o projeto usa [versionamento semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+### Corrigido
+- Windows: o MCP registrado pelo app (aberto pelo atalho, em `pythonw.exe`) não respondia ao VS Code nem ao
+  Copilot CLI, porque `pythonw.exe` não tem entrada e saída. O MCP agora usa sempre `python.exe`.
+- Windows sem permissão de symlink: as skills eram publicadas como *junction*, que o Copilot e o VS Code não
+  enxergam. Agora são copiadas (e recopiadas a cada sincronização).
+- Windows: `solarhub uninstall` fechava o próprio processo (o atalho `solarhub.exe` do uv era tratado como o app)
+  e parava no meio. Agora poupa a si mesmo e quem o iniciou, e fecha antes os servidores MCP que seguravam arquivos.
+
+### Adicionado
+- **Desinstalar pelo app** (Integrações → Desinstalar o Solarhub) e `solarhub uninstall` removendo também o
+  próprio programa: `uv tool`, pipx, AppImage, pasta do `.zip` ou `.venv` do clone. O Python continua.
+
 ## [0.4.0] — 2026-10-29
 
 ### Adicionado

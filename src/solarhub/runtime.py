@@ -45,9 +45,13 @@ def self_command(background: bool = False) -> list[str]:
         exe = folder / f"{GUI_EXE if background else CLI_EXE}.exe"
         return [str(exe if exe.exists() else sys.executable), *_home_args()]
     py = Path(sys.executable)
-    if osutil.IS_WINDOWS and background:
-        pyw = py.with_name("pythonw.exe")
-        py = pyw if pyw.exists() else py
+    if osutil.IS_WINDOWS:
+        # pythonw.exe não tem stdin/stdout: serve para o agendador e o atalho, nunca para o MCP nem o terminal.
+        # O app aberto pelo atalho roda em pythonw, então o MCP que ele registra precisa voltar para python.exe.
+        want = "pythonw.exe" if background else "python.exe"
+        other = py.with_name(want)
+        if py.name.lower() != want and other.exists():
+            py = other
     return [str(py), "-m", "solarhub", *_home_args()]
 
 

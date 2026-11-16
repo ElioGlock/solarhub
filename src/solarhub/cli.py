@@ -781,18 +781,25 @@ def mcp():
 @app.command()
 def uninstall(
     keep_data: bool = typer.Option(False, "--keep-data", help=f"Mantém a pasta do hub ({paths.home()})."),
+    keep_program: bool = typer.Option(False, "--keep-program", help="Não remove o programa (só o que ele configurou)."),
     yes: bool = typer.Option(False, "--yes", "-y", help="Não pede confirmação."),
     purge: bool = typer.Option(False, "--purge", hidden=True),  # compatibilidade: agora é o padrão
 ):
-    """Remove do computador tudo o que o Solarhub criou, inclusive a pasta ~/solarhub."""
+    """Desfaz tudo: o que o Solarhub configurou, a pasta ~/solarhub (com os clones) e o próprio programa."""
+    from solarhub import uninstaller  # noqa: PLC0415
+
+    removal = None if keep_program else uninstaller.program_removal()
     if not yes:
         typer.echo("Vai remover:")
-        for item in setup_mod.uninstall_plan(keep_data):
+        for item in setup_mod.uninstall_plan(keep_data, not keep_program):
             typer.echo(f"  - {item}")
-        typer.echo("Pastas locais vinculadas como fonte e os seus repositórios não são apagados.")
+        typer.echo("Pastas locais vinculadas como fonte, os seus repositórios no GitHub e o Python não são tocados.")
         typer.confirm("Continuar?", abort=True)
     for msg in setup_mod.uninstall(keep_data):
         ok(msg)
+    if removal:
+        uninstaller.launch_removal(removal)
+        ok(f"removendo {removal.description} assim que este comando terminar")
 
 
 def _utf8_console() -> None:

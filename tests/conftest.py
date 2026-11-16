@@ -29,6 +29,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("LOCALAPPDATA", str(home / "AppData" / "Local"))
     monkeypatch.setenv("SOLARHUB_HOME", str(home / "solarhub"))
     monkeypatch.setenv("SOLARHUB_NO_UPDATE_CHECK", "1")  # testes nunca consultam o GitHub
+    monkeypatch.setenv("SOLARHUB_TESTING", "1")  # nem fecham processos reais
     monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(tmp_path / "gitconfig"))
     monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
     for k, v in {"GIT_AUTHOR_NAME": "T", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "T",

@@ -99,6 +99,26 @@ def make_dir_link(link: Path, target: Path) -> None:
         link.symlink_to(target, target_is_directory=True)
 
 
+_SYMLINK_OK: bool | None = None
+
+
+def can_symlink() -> bool:
+    """No Windows, symlink exige modo desenvolvedor ou administrador. Testa uma vez."""
+    global _SYMLINK_OK
+    if not IS_WINDOWS:
+        return True
+    if _SYMLINK_OK is None:
+        import tempfile  # noqa: PLC0415
+
+        with tempfile.TemporaryDirectory() as d:
+            try:
+                os.symlink(d, os.path.join(d, "teste"), target_is_directory=True)
+                _SYMLINK_OK = True
+            except OSError:
+                _SYMLINK_OK = False
+    return _SYMLINK_OK
+
+
 def remove_link(p: Path) -> None:
     """Remove só o link (nunca o conteúdo do destino)."""
     if IS_WINDOWS:
